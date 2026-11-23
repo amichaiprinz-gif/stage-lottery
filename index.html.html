@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>סימולטור הגרלת הסטאז'</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one column, ranking first, results right below it; on wide screens two columns side by side. */
+:root{
+  --paper:#f3f5f6; --card:#ffffff; --ink:#15222b; --muted:#5d6b75; --line:#d6dde2;
+  --accent:#0d6b6e; --accent-soft:#d9eceb; --red:#b23a2b; --red-soft:#f6dfdb; --prev:#9aa7b0;
+  --display:"Frank Ruhl Libre","Times New Roman",serif; --body:"Heebo","Arial",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#10181d; --card:#18232a; --ink:#e8eef1; --muted:#9db0bb; --line:#2b3a43;
+  --accent:#4fc1bf; --accent-soft:#17383a; --red:#ee8676; --red-soft:#40211c; --prev:#6b7c87; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --paper:#10181d; --card:#18232a; --ink:#e8eef1; --muted:#9db0bb; --line:#2b3a43;
+  --accent:#4fc1bf; --accent-soft:#17383a; --red:#ee8676; --red-soft:#40211c; --prev:#6b7c87; color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:18px}
+header h1{font-family:var(--display);font-weight:700;font-size:1.9rem;line-height:1.2;margin:0 0 6px;text-wrap:balance}
+header p{margin:0;color:var(--muted);max-width:60ch}
+.tag{display:inline-block;font-size:.78rem;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:2px 8px;margin-bottom:8px}
+.notice{border:1px solid var(--red);background:var(--red-soft);border-radius:8px;padding:10px 14px;font-size:.92rem}
+.notice b{color:var(--red)}
+.cols{display:grid;grid-template-columns:1fr;gap:18px}
+@media (min-width:860px){.cols{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+h2{font-family:var(--display);font-weight:700;font-size:1.25rem;margin:0 0 4px}
+.hint{color:var(--muted);font-size:.9rem;margin:0 0 12px}
+ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+ol.rank li{will-change:transform;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--card)}
+ol.rank li.red{border-color:var(--red);background:var(--red-soft)}
+.grip{width:32px;height:36px;border:0;background:transparent;color:var(--muted);font-size:1.2rem;line-height:1;cursor:grab;touch-action:none;border-radius:6px}
+ol.rank li.drag{border-color:var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.18);position:relative;z-index:2}
+ol.rank li.drag .grip{cursor:grabbing}
+.num{font-variant-numeric:tabular-nums;color:var(--muted);width:1.8em;text-align:center;font-weight:500}
+.name{flex:1;min-width:0;overflow-wrap:anywhere}
+.name small{display:block;color:var(--muted);font-size:.78rem}
+button{font:inherit;color:inherit;cursor:pointer}
+.mv{width:32px;height:36px;border:1px solid var(--line);background:var(--paper);border-radius:6px;font-size:.9rem;line-height:1}
+.mv:disabled{opacity:.35;cursor:default}
+.flag{border:1px solid var(--line);background:var(--paper);border-radius:6px;height:36px;padding:0 8px;font-size:.8rem;white-space:nowrap}
+li.red .flag{background:var(--red);border-color:var(--red);color:#fff}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.run{margin-top:14px;width:100%;border:0;border-radius:8px;background:var(--accent);color:var(--card);font-weight:700;padding:12px;font-size:1rem}
+.run:disabled{opacity:.6}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 14px}
+.tile{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.tile b{display:block;font-size:1.45rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile span{color:var(--muted);font-size:.8rem}
+.tile.bad b{color:var(--red)}
+.tile i{font-style:normal;color:var(--prev);font-size:.8rem;font-variant-numeric:tabular-nums}
+.rows{display:flex;flex-direction:column;gap:7px}
+.row{display:grid;grid-template-columns:minmax(0,8.2em) minmax(0,1fr) 2.9em 2.9em 3.3em;gap:8px;align-items:center;font-size:.92rem}
+.row .lab{overflow-wrap:anywhere}
+.track{height:12px;background:var(--paper);border-radius:6px;overflow:hidden}
+.fill{height:100%;background:var(--accent);border-radius:6px}
+.row.red .fill{background:var(--red)}
+.pct{font-variant-numeric:tabular-nums;text-align:left;font-weight:500}
+.was{font-variant-numeric:tabular-nums;text-align:left;color:var(--prev);font-size:.82rem}
+.first{font-variant-numeric:tabular-nums;text-align:left;color:var(--muted);font-size:.82rem}
+h3{font-size:1rem;margin:16px 0 6px}
+.advice{margin:0;padding-inline-start:1.2em;font-size:.92rem;display:flex;flex-direction:column;gap:6px}
+.yr{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:.95rem}
+.yr select{font:inherit;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.rowhead{color:var(--muted);font-size:.78rem}
+.status{color:var(--muted);font-size:.85rem;min-height:1.4em;margin-top:8px}
+details{font-size:.92rem}
+details summary{cursor:pointer;font-weight:700}
+details ul{margin:8px 0 0;padding-inline-start:1.2em;color:var(--muted)}
+details li{margin-bottom:4px}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .35s ease}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="tag">אב טיפוס</span>
+  <h1>סימולטור הגרלת הסטאז'</h1>
+  <p>מדרגים את בתי החולים, והסימולטור מריץ את ההגרלה אלפי פעמים מול מחזור מדומה של 865 סטודנטים. התוצאה היא הסיכוי שלך לכל בית חולים.</p>
+</header>
+<div class="notice"><b>מה רשמי ומה לא.</b> הביקוש לכל בית חולים הוא נתון רשמי של משרד הבריאות, לכל הגרלה מ 2017 עד 2026. מספר המקומות בכל בית חולים לא מפורסם. הוא מחושב כאן לפי הכלל של משרד הבריאות, ביחס למספר המיטות של בית החולים, ולכן הוא אומדן. תוספת הפריפריה לא כלולה.</div>
+<div class="cols">
+<section aria-labelledby="h-rank">
+  <h2 id="h-rank">הדירוג שלך</h2>
+  <label class="yr" for="year">הגרלה של שנת <select id="year"></select></label>
+  <p class="hint">גוררים בית חולים מהידית שבצד, או מזיזים בחצים. "לא רוצה" מסמן מקום שלא היית רוצה לקבל.</p>
+  <ol class="rank" id="rank"></ol>
+  <button class="run" id="run" type="button">הרצת 10,000 הגרלות</button>
+  <div class="status" id="status" role="status"></div>
+</section>
+<section aria-labelledby="h-res">
+  <h2 id="h-res">התוצאות</h2>
+  <p class="hint" id="reshint">הסיכוי לקבל כל בית חולים, לפי סדר הדירוג שלך.</p>
+  <div class="tiles" id="tiles"></div>
+  <p class="hint" id="check"></p>
+  <div class="row rowhead"><span>בית חולים</span><span></span><span class="pct">עכשיו</span><span class="was">קודם</span><span class="first">אם ראשון</span></div>
+  <div class="rows" id="rows"></div>
+  <h3>מה אפשר לשפר</h3>
+  <ul class="advice" id="advice"></ul>
+</section>
+</div>
+<section>
+<details>
+  <summary>איך זה מחושב ומה לא כלול</summary>
+  <ul>
+    <li>הביקוש: נתוני משרד הבריאות, בוגרי הארץ, לכל הגרלה מ 2017 עד 2026. לכל בית חולים ידוע כמה סטודנטים דירגו אותו במקום 1, במקומות 2 עד 5, 6 עד 10, 11 עד 20 ו 21 עד 25.</li>
+    <li>המחזור המדומה משחזר את הטבלה הרשמית בדיוק. מה שהטבלה לא אומרת מוגרל: איזה סטודנט דירג מה, והסדר בתוך כל טווח.</li>
+    <li>העדפת אזור: הדירוג של כל סטודנט נוטה לבתי חולים שקרובים לבחירה הראשונה שלו, לפי המרחק בין הערים. עוצמת הנטייה היא המספר היחיד במודל שכויל, והוא כויל רק על תוצאות 2026. הטבלה הרשמית נשמרת בדיוק גם אחרי הנטייה.</li>
+    <li>המקומות: סך השיבוצים הרשמי של אותה שנה, מחולק בין בתי החולים ביחס למספר מיטות האשפוז הכללי (משרד הבריאות, דצמבר 2025). לשנים קודמות נעשה שימוש באותו יחס.</li>
+    <li>ההגרלה: סדר אקראי, וכל אחד בתורו מקבל את המקום הפנוי הגבוה ביותר בדירוג שלו. התוצאות האישיות בדף הן של השלב הזה. לא כלולים החרגות ושיבוץ זוגות.</li>
+    <li>שלב המסחר: חושב מחוץ לדף, על מחזורים מדומים לכל שנה, לפי הנוסחה שפורסמה במאמר על המנגנון.</li>
+    <li>בדיקה על תשע השנים שלא שימשו לכיול (2017 עד 2025): אחרי המסחר, שיעור מקבלי העדיפות הראשונה במודל רחוק מנתון הדשבורד בנקודת אחוז אחת בממוצע, ובשלוש נקודות לכל היותר (2025).</li>
+    <li>נתון הדשבורד של משרד הבריאות מעוגל, ובשנים שיש להן נתון מדויק מהעיתונות הוא גבוה ממנו בנקודה עד שתיים (2026: 68 מול 66.71. 2024: 72 מול 70).</li>
+    <li>למסחר אין תוצאה אישית אחת ויחידה: יש כמה חלוקות שוות ערך. לכן הדף מציג אותו לפי קבוצה (כל מי שדירג ראשון את אותו בית חולים) ולא לפי הדירוג המלא שלך.</li>
+    <li>"אם ראשון": הסיכוי שבית החולים עדיין פנוי כשמגיע תורך, כלומר הסיכוי לקבל אותו אם תדרג אותו ראשון.</li>
+  </ul>
+</details>
+</section>
+</div>
+<script>
+// Official figures: Ministry of Health data dashboard (demand, placements) and licensed beds, December 2025.
+// model/trade/firstRate are results of this simulator, computed offline on simulated cohorts per year.
+var DATA={"2017":{"names":["סוראסקי איכילוב","רבין ק. בילינסון","שיבא","רמב\"ם","הדסה עין כרם","סורוקה","מאיר","הכרמל","שערי צדק","המרכזי בעמק","בני ציון","קפלן","שמיר","רבין ק. השרון","הלל יפה","וולפסון","אסותא אשדוד","גליל נהריה","יוספטל","ברזילי","מ.ר. צפון (פוריה)","זיו צפת","לניאדו","הסקוטי"],"profile":[[108,165,272,111,3],[102,172,263,119,3],[80,248,232,96,3],[70,92,233,261,3],[49,86,122,393,9],[44,86,137,372,20],[40,242,236,139,2],[30,129,100,395,5],[26,75,97,427,34],[22,81,72,440,44],[20,133,103,399,4],[16,140,195,290,18],[13,309,174,159,4],[11,87,279,278,4],[9,121,144,370,15],[5,266,155,227,6],[5,117,171,314,52],[4,21,25,141,468],[2,27,153,429,48],[1,7,22,183,446],[1,3,9,58,588],[1,2,6,49,601],[0,19,70,499,71],[0,8,25,441,185]],"n":659,"bucket":[1,4,5,10,4],"places":[52,38,55,45,34,50,33,22,42,27,19,26,37,11,25,32,16,31,3,25,15,15,17,6],"official":[65,86],"model":[61.7,77.2],"trade":[64.3,86.6],"firstRate":[[47,48,108],[37,37,102],[58,69,80],[64,64,70],[68,65,49],[89,96,44],[61,56,40],[68,70,30],[90,98,26],[86,80,22],[72,83,20],[81,88,16],[76,80,13],[57,83,11],[87,65,9],[75,95,5],[84,91,5],[100,100,4],[83,73,2],[100,100,1],[100,100,1],[100,100,1],[null,null,0],[null,null,0]],"pull":4},"2018":{"names":["סוראסקי איכילוב","רבין ק. בילינסון","שיבא","רמב\"ם","הדסה עין כרם","מאיר","סורוקה","הכרמל","שערי צדק","שמיר","המרכזי בעמק","אסותא אשדוד","בני ציון","וולפסון","הלל יפה","רבין ק. השרון","קפלן","מ.ר. צפון (פוריה)","ברזילי","גליל נהריה","זיו צפת","הסקוטי","יוספטל","מעיני הישועה","לניאדו"],"profile":[[114,186,230,105,2],[78,187,278,93,1],[64,186,283,104,0],[63,108,222,242,2],[54,78,176,317,12],[43,182,284,127,1],[40,70,153,358,16],[35,98,150,347,7],[26,81,66,439,25],[24,273,172,165,3],[20,70,80,419,48],[18,194,168,247,10],[15,110,106,401,5],[11,253,135,234,4],[9,138,93,387,10],[9,105,253,263,7],[7,150,156,319,5],[2,5,4,38,588],[2,0,11,131,493],[1,15,14,109,498],[1,3,7,21,605],[1,0,12,213,411],[0,31,47,485,74],[0,16,59,432,130],[0,9,26,374,228]],"n":637,"bucket":[1,4,5,10,5],"places":[49,36,51,43,32,31,48,20,39,35,26,15,18,30,23,10,24,14,23,30,15,5,3,12,16],"official":[67,85],"model":[61.9,77.0],"trade":[66.5,85.7],"firstRate":[[43,43,114],[45,46,78],[65,77,64],[66,68,63],[59,59,54],[62,67,43],[88,97,40],[57,57,35],[85,92,26],[74,88,24],[86,84,20],[68,75,18],[72,84,15],[73,82,11],[86,84,9],[62,92,9],[82,94,7],[99,100,2],[99,100,2],[100,100,1],[100,100,1],[91,100,1],[null,null,0],[null,null,0],[null,null,0]],"pull":4},"2019":{"names":["רבין ק. בילינסון","סוראסקי איכילוב","שיבא","רמב\"ם","סורוקה","מאיר","שערי צדק","שמיר","הדסה עין כרם","הכרמל","קפלן","המרכזי בעמק","רבין ק. השרון","יוספטל","אסותא אשדוד","בני ציון","וולפסון","הלל יפה","גליל נהריה","זיו צפת","מעיני הישועה","לניאדו","הסקוטי","מ.ר. צפון (פוריה)","ברזילי"],"profile":[[120,294,228,47,3],[80,322,231,56,3],[71,245,310,64,2],[65,115,275,234,3],[55,68,194,358,17],[52,201,306,130,3],[44,72,89,465,22],[36,289,218,146,3],[35,97,214,339,7],[27,97,160,402,6],[15,147,156,366,8],[15,65,50,511,51],[14,108,213,345,12],[13,27,62,518,72],[12,131,262,279,8],[12,110,54,507,9],[9,183,208,285,7],[9,134,108,434,7],[4,9,13,93,573],[2,1,6,34,649],[1,26,40,536,89],[1,10,37,502,142],[0,7,9,86,590],[0,7,5,35,645],[0,3,12,148,529]],"n":692,"bucket":[1,4,5,10,5],"places":[39,53,56,47,52,34,43,38,35,22,26,28,11,3,16,19,33,26,32,16,13,17,6,16,25],"official":[68,85],"model":[63.0,76.5],"trade":[67.4,86.0],"firstRate":[[32,32,120],[56,62,80],[62,66,71],[71,69,65],[84,91,55],[56,52,52],[84,94,44],[67,82,36],[83,97,35],[75,79,27],[80,91,15],[90,85,15],[48,69,14],[23,23,13],[78,87,12],[83,86,12],[77,93,9],[87,75,9],[100,100,4],[100,100,2],[85,100,1],[90,100,1],[null,null,0],[null,null,0],[null,null,0]],"pull":4},"2020":{"names":["סוראסקי איכילוב","שיבא","רבין ק. בילינסון","מאיר","סורוקה","רמב\"ם","הדסה עין כרם","שערי צדק","הכרמל","שמיר","וולפסון","קפלן","אסותא אשדוד","בני ציון","רבין ק. השרון","המרכזי בעמק","הלל יפה","גליל נהריה","מ.ר. צפון (פוריה)","יוספטל","מעיני הישועה","לניאדו","ברזילי","זיו צפת","הסקוטי"],"profile":[[115,329,220,54,2],[83,241,312,81,3],[78,316,261,64,1],[52,269,278,118,3],[48,58,170,423,21],[47,114,237,320,2],[44,90,151,425,10],[43,74,107,473,23],[38,100,123,456,3],[37,228,302,149,4],[32,215,222,248,3],[20,208,206,276,10],[19,138,229,321,13],[15,97,84,517,7],[14,139,311,249,7],[10,63,48,520,79],[9,136,130,435,10],[7,11,14,109,579],[3,3,8,45,661],[2,12,46,548,112],[1,21,69,544,85],[1,11,48,543,117],[1,4,13,180,522],[1,1,6,26,686],[0,2,5,76,637]],"n":720,"bucket":[1,4,5,10,5],"places":[55,58,41,35,54,48,36,45,23,39,34,27,17,20,11,29,27,33,16,3,14,18,26,17,6],"official":[71,85],"model":[66.2,75.0],"trade":[71.3,83.8],"firstRate":[[48,48,115],[61,70,83],[51,53,78],[60,60,52],[86,90,48],[80,85,47],[76,80,44],[83,97,43],[60,57,38],[71,88,37],[68,87,32],[74,87,20],[71,77,19],[82,84,15],[59,79,14],[91,91,10],[85,63,9],[100,100,7],[100,100,3],[84,100,2],[83,100,1],[89,100,1],[98,100,1],[100,100,1],[null,null,0]],"pull":4},"2021":{"names":["רבין ק. בילינסון","מאיר","סוראסקי איכילוב","שיבא","רמב\"ם","הדסה עין כרם","סורוקה","הכרמל","שערי צדק","קפלן","בני ציון","אסותא אשדוד","שמיר","המרכזי בעמק","וולפסון","יוספטל","הלל יפה","רבין ק. השרון","גליל נהריה","לניאדו","מ.ר. צפון (פוריה)","זיו צפת","מעיני הישועה","ברזילי","הסקוטי"],"profile":[[106,326,233,64,1],[100,244,274,110,2],[98,321,238,70,3],[75,281,291,79,4],[65,134,200,325,6],[42,76,179,427,6],[41,54,153,457,25],[38,131,137,421,3],[24,68,121,488,29],[21,161,251,286,11],[21,119,77,504,9],[20,123,265,310,12],[18,242,306,160,4],[15,64,30,535,86],[14,168,313,228,7],[9,29,45,566,81],[7,180,124,412,7],[6,151,289,275,9],[5,6,15,122,582],[3,15,46,586,80],[1,6,7,69,647],[1,0,5,26,698],[0,12,35,575,108],[0,7,10,150,563],[0,2,6,55,667]],"n":730,"bucket":[1,4,5,10,5],"places":[41,35,56,59,49,37,54,23,45,28,20,17,40,29,34,3,27,11,34,18,16,17,14,26,6],"official":[65,84],"model":[58.2,71.8],"trade":[62.8,82.3],"firstRate":[[38,39,106],[35,35,100],[50,56,98],[57,65,75],[69,73,65],[77,73,42],[88,99,41],[59,60,38],[89,99,24],[74,91,21],[72,75,21],[68,69,20],[73,87,18],[89,89,15],[74,94,14],[33,33,9],[80,60,7],[51,79,6],[100,100,5],[89,100,3],[99,100,1],[100,100,1],[null,null,0],[null,null,0],[null,null,0]],"pull":4},"2022":{"names":["רבין ק. בילינסון","סוראסקי איכילוב","מאיר","רמב\"ם","הכרמל","שיבא","הדסה עין כרם","שערי צדק","שמיר","רבין ק. השרון","סורוקה","קפלן","וולפסון","אסותא אשדוד","בני ציון","הלל יפה","המרכזי בעמק","לניאדו","גליל נהריה","מ.ר. צפון (פוריה)","זיו צפת","יוספטל","מעיני הישועה","ברזילי","הסקוטי"],"profile":[[113,347,208,35,1],[106,326,238,33,1],[67,307,251,77,2],[67,113,191,329,4],[52,107,132,404,9],[51,249,316,87,1],[38,96,147,422,1],[37,65,84,498,20],[24,197,301,178,4],[22,164,284,225,9],[20,52,113,508,11],[19,104,275,298,8],[17,185,267,228,7],[16,87,284,303,14],[14,121,72,483,14],[12,153,137,396,6],[12,75,34,536,47],[6,16,36,595,51],[3,9,7,75,610],[3,3,8,43,647],[3,1,6,33,661],[2,12,54,552,84],[0,22,55,564,63],[0,5,14,97,588],[0,0,6,41,657]],"n":704,"bucket":[1,4,5,10,5],"places":[40,54,34,47,23,57,36,44,38,11,52,27,33,16,20,26,28,17,33,16,16,3,13,26,6],"official":[64,81],"model":[57.9,71.8],"trade":[63.4,82.3],"firstRate":[[35,35,113],[47,50,106],[47,51,67],[63,69,67],[44,44,52],[63,83,51],[78,79,38],[85,93,37],[74,94,24],[41,50,22],[91,99,20],[77,86,19],[72,83,17],[73,83,16],[68,70,14],[78,70,12],[87,95,12],[86,95,6],[100,100,3],[99,100,3],[100,100,3],[81,75,2],[null,null,0],[null,null,0],[null,null,0]],"pull":4},"2023":{"names":["סוראסקי איכילוב","רבין ק. בילינסון","מאיר","שיבא","רמב\"ם","הדסה עין כרם","וולפסון","סורוקה","שערי צדק","הכרמל","קפלן","רבין ק. השרון","הלל יפה","בני ציון","אסותא אשדוד","המרכזי בעמק","שמיר","מ.ר. צפון (פוריה)","גליל נהריה","יוספטל","לניאדו","מעיני הישועה","ברזילי","זיו צפת","הסקוטי"],"profile":[[153,386,223,37,2],[104,403,259,34,1],[61,350,323,65,2],[56,300,328,115,2],[52,139,214,392,4],[48,100,159,487,7],[46,256,297,199,3],[39,59,70,613,20],[37,66,86,602,10],[36,137,185,439,4],[32,139,270,354,6],[25,166,426,179,5],[22,128,175,474,2],[22,117,56,603,3],[19,109,279,389,5],[16,44,37,664,40],[13,179,369,236,4],[7,3,5,28,758],[5,1,7,37,751],[4,37,41,647,72],[2,53,60,654,32],[1,26,115,620,39],[1,4,10,92,694],[0,2,4,18,777],[0,0,7,32,762]],"n":801,"bucket":[1,4,5,10,5],"places":[61,45,39,64,53,40,38,59,49,26,30,13,29,22,19,32,43,18,37,4,20,15,29,18,7],"official":[66,86],"model":[61.5,72.8],"trade":[66.1,84.5],"firstRate":[[40,40,153],[42,43,104],[53,53,61],[63,78,56],[81,87,52],[75,77,48],[58,60,46],[90,99,39],[86,97,37],[69,70,36],[69,83,32],[45,52,25],[79,82,22],[80,92,22],[71,71,19],[89,96,16],[76,92,13],[97,100,7],[100,100,5],[77,95,4],[85,96,2],[80,90,1],[99,100,1],[null,null,0],[null,null,0]],"pull":4},"2024":{"names":["רבין ק. בילינסון","סוראסקי איכילוב","רמב\"ם","מאיר","הדסה עין כרם","שיבא","סורוקה","שערי צדק","הכרמל","קפלן","שמיר","וולפסון","אסותא אשדוד","בני ציון","הלל יפה","המרכזי בעמק","רבין ק. השרון","יוספטל","לניאדו","מ.ר. צפון (פוריה)","גליל נהריה","זיו צפת","מעיני הישועה","ברזילי","הסקוטי"],"profile":[[110,359,233,46,1],[84,358,255,52,0],[65,120,169,388,7],[64,280,333,70,2],[61,94,137,454,3],[60,316,265,106,2],[47,76,105,498,23],[42,89,64,526,28],[32,119,110,481,7],[30,148,322,246,3],[25,185,309,225,5],[21,255,307,164,2],[20,128,257,329,15],[18,91,62,569,9],[15,83,170,476,5],[14,41,35,594,65],[13,148,372,206,10],[8,16,46,592,87],[7,44,65,603,30],[5,11,8,40,685],[3,7,12,55,672],[3,4,8,29,705],[1,18,83,602,45],[1,5,14,117,612],[0,1,4,22,722]],"n":749,"bucket":[1,4,5,10,5],"places":[42,57,50,36,38,60,56,46,24,28,41,35,18,21,28,30,12,4,18,17,35,17,14,27,6],"official":[72,87],"model":[66.1,77.9],"trade":[71.3,86.5],"firstRate":[[38,38,110],[58,65,84],[74,73,65],[53,56,64],[62,62,61],[69,82,60],[89,97,47],[81,88,42],[72,71,32],[75,88,30],[80,96,25],[76,95,21],[75,83,20],[81,85,18],[87,96,15],[90,90,14],[56,75,13],[50,50,8],[88,83,7],[98,100,5],[100,100,3],[100,100,3],[86,100,1],[99,100,1],[null,null,0]],"pull":4,"press":70},"2025":{"names":["סוראסקי איכילוב","רבין ק. בילינסון","שיבא","מאיר","רמב\"ם","סורוקה","שערי צדק","וולפסון","הדסה עין כרם","הכרמל","קפלן","שמיר","רבין ק. השרון","המרכזי בעמק","הלל יפה","בני ציון","מ.ר. צפון (פוריה)","גליל נהריה","אסותא אשדוד","לניאדו","יוספטל","ברזילי","זיו צפת","מעיני הישועה","הסקוטי"],"profile":[[119,443,230,25,1],[107,439,241,31,0],[79,339,301,97,2],[66,336,331,84,1],[64,132,240,381,1],[58,75,154,524,7],[54,82,112,561,9],[45,311,302,158,2],[45,91,231,446,5],[34,106,129,544,5],[33,122,324,338,1],[22,165,347,282,2],[14,178,375,249,2],[14,54,30,689,31],[12,88,174,537,7],[12,85,63,653,5],[8,6,4,22,778],[8,4,6,25,775],[7,107,269,429,6],[6,46,73,670,23],[6,19,50,706,37],[2,3,2,56,755],[2,3,2,12,799],[1,38,97,650,32],[0,0,3,11,804]],"n":818,"bucket":[1,4,5,10,5],"places":[63,46,66,40,55,61,50,38,41,26,31,44,13,33,30,23,18,38,19,20,4,30,19,15,7],"official":[68,86],"model":[67.0,76.0],"trade":[71.0,86.4],"firstRate":[[51,53,119],[43,43,107],[64,71,79],[56,56,66],[78,77,64],[87,94,58],[83,90,54],[64,70,45],[80,90,45],[74,69,34],[72,77,33],[79,95,22],[56,73,14],[90,96,14],[88,97,12],[88,97,12],[97,100,8],[100,100,8],[82,96,7],[87,97,6],[64,67,6],[100,100,2],[100,100,2],[82,63,1],[null,null,0]],"pull":4},"2026":{"names":["סוראסקי איכילוב","רבין ק. בילינסון","שיבא","מאיר","רמב\"ם","שערי צדק","סורוקה","הדסה עין כרם","קפלן","הכרמל","המרכזי בעמק","וולפסון","שמיר","בני ציון","הלל יפה","אסותא אשדוד","רבין ק. השרון","גליל נהריה","לניאדו","מעיני הישועה","מ.ר. צפון (פוריה)","זיו צפת","יוספטל","הסקוטי","ברזילי"],"profile":[[150,432,233,50,0],[125,436,253,50,1],[91,349,350,75,0],[76,334,365,89,1],[64,132,267,400,2],[58,73,145,575,14],[38,67,166,579,15],[36,81,181,561,6],[34,148,404,273,6],[30,119,131,585,0],[30,47,26,723,39],[29,391,302,141,2],[22,196,387,257,3],[16,81,45,717,6],[15,114,197,533,6],[14,121,275,443,12],[13,212,414,225,1],[10,9,10,43,793],[5,63,65,704,28],[4,36,73,705,47],[2,13,10,31,809],[2,3,3,14,843],[1,2,9,768,85],[0,1,4,25,835],[0,0,10,84,771]],"n":865,"bucket":[1,4,5,10,5],"places":[66,49,70,42,58,53,64,44,33,28,35,41,47,24,32,20,13,40,21,16,19,20,4,7,31],"official":[66.71,84.16],"model":[62.6,73.1],"trade":[67.6,84.1],"firstRate":[[43,44,150],[39,39,125],[57,70,91],[50,50,76],[79,81,64],[81,85,58],[90,99,38],[85,96,36],[69,81,34],[81,85,30],[89,94,30],[63,73,29],[74,93,22],[88,94,16],[84,94,15],[75,77,14],[52,72,13],[100,100,10],[86,93,5],[80,95,4],[99,100,2],[100,100,2],[88,100,1],[null,null,0],[null,null,0]],"pull":4}};
+function makeRng(seed){var s=seed>>>0;return function(){s+=0x6D2B79F5;var t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+function shuffle(a,rnd){for(var i=a.length-1;i>0;i--){var j=Math.floor(rnd()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+// A table of students by hospitals saying in which range each student ranked each hospital, reproducing the official
+// counts exactly. D = one year's data: names, profile (counts per range), n (students), bucket (range sizes), places.
+function buildTable(D,rnd){
+  var n=D.n,m=D.names.length,K=D.bucket,B=new Array(n),cnt=new Array(n),s,h,b,i;
+  for(s=0;s<n;s++){B[s]=new Int8Array(m);cnt[s]=[0,0,0,0,0];}
+  var perm=new Array(n);for(s=0;s<n;s++)perm[s]=s;
+  for(h=0;h<m;h++){shuffle(perm,rnd);i=0;for(b=0;b<5;b++)for(var k=0;k<D.profile[h][b];k++){s=perm[i++];B[s][h]=b;cnt[s][b]++;}}
+  // repair by swapping two students' ranges at one hospital: hospital counts never change
+  var guard=0,queue=[],order=new Array(m);for(h=0;h<m;h++)order[h]=h;
+  function bad(s){for(var b=0;b<5;b++)if(cnt[s][b]!==K[b])return true;return false;}
+  for(s=0;s<n;s++)if(bad(s))queue.push(s);
+  while(queue.length&&guard++<30000){
+    var qi=Math.floor(rnd()*queue.length);s=queue[qi];
+    if(!bad(s)){queue[qi]=queue[queue.length-1];queue.pop();continue;}
+    var as=[],ds=[];for(b=0;b<5;b++){if(cnt[s][b]>K[b])as.push(b);if(cnt[s][b]<K[b])ds.push(b);}
+    var a=as[Math.floor(rnd()*as.length)],d=ds[Math.floor(rnd()*ds.length)],done=false,fb=-1,fh=-1;
+    shuffle(order,rnd);
+    for(var oi=0;oi<m&&!done;oi++){h=order[oi];if(B[s][h]!==a)continue;
+      var st=Math.floor(rnd()*n);
+      for(var k2=0;k2<n;k2++){var t=(st+k2)%n;if(t===s||B[t][h]!==d)continue;
+        if(cnt[t][d]>K[d]||cnt[t][a]<K[a]){B[s][h]=d;B[t][h]=a;cnt[s][a]--;cnt[s][d]++;cnt[t][d]--;cnt[t][a]++;done=true;break;}
+        if(fb<0){fb=t;fh=h;}
+      }
+    }
+    if(!done&&fb>=0){B[s][fh]=d;B[fb][fh]=a;cnt[s][a]--;cnt[s][d]++;cnt[fb][d]--;cnt[fb][a]++;queue.push(fb);}
+  }
+  for(s=0;s<n;s++)if(bad(s))return null;
+  return B;
+}
+// Where each hospital is (city coordinates), to let a student's list lean toward hospitals near the first choice.
+var COORD={"סוראסקי איכילוב":[32.08,34.78],"סוראסקי – איכילוב":[32.08,34.78],"רבין ק. בילינסון":[32.09,34.87],"רבין ק. השרון":[32.09,34.88],"שיבא":[32.05,34.84],
+ "וולפסון":[32.01,34.77],"מעיני הישועה":[32.08,34.83],"מאיר":[32.18,34.91],"לניאדו":[32.33,34.86],"הלל יפה":[32.44,34.92],"שמיר":[31.96,34.84],
+ "קפלן":[31.89,34.81],"אסותא אשדוד":[31.80,34.65],"ברזילי":[31.67,34.57],"הדסה עין כרם":[31.76,35.15],"שערי צדק":[31.77,35.18],"רמב\"ם":[32.83,34.99],
+ "הכרמל":[32.79,34.99],"בני ציון":[32.81,34.99],"המרכזי בעמק":[32.61,35.29],"מ.ר. צפון (פוריה)":[32.75,35.54],"זיו צפת":[32.97,35.50],
+ "גליל נהריה":[33.01,35.10],"הסקוטי":[32.70,35.30],"סורוקה":[31.26,34.80],"יוספטל":[29.56,34.95]};
+var RANGE_KM=30, BW=[0,3,2,1,0];      // how fast the pull fades with distance; how much each range counts
+function nearness(D){
+  if(D.near)return D.near;
+  var m=D.names.length,N=new Array(m);
+  for(var i=0;i<m;i++){N[i]=new Float64Array(m);var a=COORD[D.names[i]];
+    for(var j=0;j<m;j++){var b=COORD[D.names[j]],dy=(a[0]-b[0])*111,dx=(a[1]-b[1])*94;N[i][j]=Math.exp(-Math.sqrt(dx*dx+dy*dy)/RANGE_KM);}}
+  return D.near=N;
+}
+// Mixing that keeps every count: two students exchange their ranges at two hospitals where the ranges mirror each other.
+// With pull>0 an exchange that moves nearby hospitals up a student's list is favoured (first choices never move).
+function mixTable(D,B,rnd,tries){
+  var n=B.length,m=D.names.length,pull=D.pull||0,N=pull?nearness(D):null,F=D.first;
+  for(var i=0;i<tries;i++){
+    var s=Math.floor(rnd()*n),t=Math.floor(rnd()*n),h=Math.floor(rnd()*m),g=Math.floor(rnd()*m);
+    if(s===t||h===g)continue;
+    var a=B[s][h],d=B[t][h];if(a===d||B[s][g]!==d||B[t][g]!==a)continue;
+    if(pull){
+      if(a===0||d===0)continue;
+      var gain=(BW[d]-BW[a])*(N[F[s]][h]-N[F[s]][g]-N[F[t]][h]+N[F[t]][g]);
+      if(gain<0&&rnd()>Math.exp(pull*gain))continue;
+    }
+    B[s][h]=d;B[t][h]=a;B[s][g]=a;B[t][g]=d;
+  }
+}
+function makeCohort(D,rnd){
+  var m=D.names.length,n=D.n,s,h,b,i,pull=D.pull||0;
+  if(!D.table){
+    for(var k=0;k<300&&!D.table;k++)D.table=buildTable(D,rnd);if(!D.table)throw new Error("no exact cohort");
+    D.first=new Int16Array(n);for(s=0;s<n;s++)for(h=0;h<m;h++)if(D.table[s][h]===0)D.first[s]=h;
+    mixTable(D,D.table,rnd,pull?5000000:400000);
+  } else mixTable(D,D.table,rnd,pull?300000:150000);
+
+  var B=D.table,N=pull?nearness(D):null,cohort=new Array(n),key=new Float64Array(m);
+  for(s=0;s<n;s++){var groups=[[],[],[],[],[]];for(h=0;h<m;h++)groups[B[s][h]].push(h);var r=[];
+    for(b=0;b<5;b++){var G=groups[b];
+      if(pull&&b>0){var f=D.first[s];for(i=0;i<G.length;i++)key[G[i]]=pull*N[f][G[i]]-Math.log(-Math.log(rnd()+1e-12));G.sort(function(x,y){return key[y]-key[x];});}
+      else shuffle(G,rnd);
+      for(i=0;i<G.length;i++)r.push(G[i]);}
+    cohort[s]=r;}
+  return cohort;
+}
+// One draw: random order, each student in turn takes the best free place. Stops at the user's turn (the user replaces
+// student 0) and returns the places still free then, so everything about the user's options can be read from it.
+function freeAtMyTurn(D,cohort,rnd){
+  var n=cohort.length,m=D.names.length,free=freeAtMyTurn.free,i,j;
+  if(!free||free.length!==m)free=freeAtMyTurn.free=new Array(m);
+  for(i=0;i<m;i++)free[i]=D.places[i];
+  var pos=Math.floor(rnd()*n),idx=freeAtMyTurn.idx;if(!idx||idx.length!==n)idx=freeAtMyTurn.idx=new Array(n);
+  for(i=0;i<n;i++)idx[i]=i;
+  for(i=0;i<pos;i++){j=1+i+Math.floor(rnd()*(n-1-i));var t=idx[1+i];idx[1+i]=idx[j];idx[j]=t;
+    var r=cohort[idx[1+i]];for(var k=0;k<m;k++){if(free[r[k]]>0){free[r[k]]--;break;}}}
+  return free;
+}
+if(typeof module!=="undefined")module.exports={makeRng:makeRng,shuffle:shuffle,makeCohort:makeCohort,freeAtMyTurn:freeAtMyTurn};
+var YEAR="2026",D=DATA[YEAR],order=D.names.slice(),red={},last=null,prev=null,busy=false,runNo=0;
+D.names.slice(-5).forEach(function(n){red[n]=true;});   // example marks, so the page opens in a working state
+var $=function(id){return document.getElementById(id);};
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+function fmt(x){return (x<10?x.toFixed(1):Math.round(x))+"%";}
+function changed(){$("status").textContent="הדירוג השתנה. להרצה מחדש לוחצים על הכפתור.";}
+function renderRank(){
+  var ol=$("rank");ol.textContent="";
+  order.forEach(function(name,pos){
+    var h=D.names.indexOf(name),li=el("li",red[name]?"red":"");
+    var grip=el("button","grip","⠿");grip.type="button";grip.setAttribute("aria-label","לגרור את "+name);
+    grip.onpointerdown=function(ev){startDrag(ev,li,grip);};
+    li.appendChild(grip);li.appendChild(el("span","num",String(pos+1)));
+    var nm=el("span","name",name);
+    nm.appendChild(el("small","","דירגו ראשון: "+D.profile[h][0]+" · מקומות (אומדן): "+D.places[h]));
+    li.appendChild(nm);
+    var up=el("button","mv","▲");up.type="button";up.disabled=pos===0;up.setAttribute("aria-label","להעלות את "+name);up.onclick=function(){move(pos,-1);};
+    var dn=el("button","mv","▼");dn.type="button";dn.disabled=pos===order.length-1;dn.setAttribute("aria-label","להוריד את "+name);dn.onclick=function(){move(pos,1);};
+    var fl=el("button","flag","לא רוצה");fl.type="button";fl.setAttribute("aria-pressed",red[name]?"true":"false");
+    fl.onclick=function(){red[name]=!red[name];renderRank();changed();};
+    li.appendChild(up);li.appendChild(dn);li.appendChild(fl);ol.appendChild(li);
+  });
+}
+// Drag by the grip: the row follows the finger, the rows it passes slide aside, and the order changes on release.
+function startDrag(ev,li,grip){
+  if(busy)return;ev.preventDefault();
+  var ol=$("rank"),items=Array.prototype.slice.call(ol.children),i0=items.indexOf(li);
+  var rects=items.map(function(it){return it.getBoundingClientRect();});
+  var step=items.length>1?rects[1].top-rects[0].top:rects[0].height;
+  var y0=ev.clientY,y=y0,s0=window.scrollY,target=i0,timer=null;
+  try{grip.setPointerCapture(ev.pointerId);}catch(e){}
+  li.classList.add("drag");
+  function place(){
+    var dy=(y-y0)+(window.scrollY-s0);
+    var lo=-i0*step,hi=(items.length-1-i0)*step;if(dy<lo)dy=lo;if(dy>hi)dy=hi;
+    li.style.transform="translateY("+dy+"px)";
+    target=Math.max(0,Math.min(items.length-1,i0+Math.round(dy/step)));
+    for(var j=0;j<items.length;j++){if(j===i0)continue;
+      var sh=0;if(j>i0&&j<=target)sh=-step;else if(j<i0&&j>=target)sh=step;
+      items[j].style.transform=sh?"translateY("+sh+"px)":"";}
+  }
+  function onMove(e){y=e.clientY;place();}
+  function tick(){var m=80;if(y<m)window.scrollBy(0,-14);else if(y>window.innerHeight-m)window.scrollBy(0,14);else return;place();}
+  function end(){
+    clearInterval(timer);grip.removeEventListener("pointermove",onMove);grip.removeEventListener("pointerup",end);grip.removeEventListener("pointercancel",end);
+    if(target!==i0){var moved=order.splice(i0,1)[0];order.splice(target,0,moved);}
+    renderRank();if(target!==i0)changed();
+  }
+  grip.addEventListener("pointermove",onMove);grip.addEventListener("pointerup",end);grip.addEventListener("pointercancel",end);
+  timer=setInterval(tick,30);
+}
+function move(pos,d){var t=order[pos];order[pos]=order[pos+d];order[pos+d]=t;renderRank();changed();}
+function share(res,fn){var s=0;res.order.forEach(function(name,pos){if(fn(name,pos))s+=res.got[name];});return s/res.draws*100;}
+function tile(label,now,was,bad){var t=el("div","tile"+(bad?" bad":""));t.appendChild(el("b","",fmt(now)));t.appendChild(el("span","",label));
+  if(was!=null){t.appendChild(document.createElement("br"));t.appendChild(el("i","","קודם "+fmt(was)));}return t;}
+function renderResults(){
+  var tiles=$("tiles");tiles.textContent="";
+  var isRed=function(name){return !!last.red[name];},wasRed=function(name){return !!prev.red[name];};
+  var redNow=share(last,isRed);
+  tiles.appendChild(tile("עדיפות ראשונה",share(last,function(n,p){return p===0;}),prev?share(prev,function(n,p){return p===0;}):null));
+  tiles.appendChild(tile("אחת משלוש הראשונות",share(last,function(n,p){return p<3;}),prev?share(prev,function(n,p){return p<3;}):null));
+  tiles.appendChild(tile("מקום שלא רוצה",redNow,prev?share(prev,wasRed):null,true));
+  var rows=$("rows");rows.textContent="";
+  last.order.forEach(function(name,pos){
+    var p=last.got[name]/last.draws*100,q=prev&&prev.got[name]!=null?prev.got[name]/prev.draws*100:null,f=last.open[name]/last.draws*100;
+    var r=el("div","row"+(last.red[name]?" red":""));
+    r.appendChild(el("span","lab",(pos+1)+". "+name));
+    var tr=el("div","track"),fi=el("div","fill");fi.style.width=Math.max(p,p>0?1:0)+"%";tr.appendChild(fi);r.appendChild(tr);
+    r.appendChild(el("span","pct",fmt(p)));r.appendChild(el("span","was",q==null?"":fmt(q)));r.appendChild(el("span","first",fmt(f)));
+    rows.appendChild(r);
+  });
+  $("reshint").textContent="הגרלת "+YEAR+", "+D.n+" סטודנטים, "+last.draws.toLocaleString("he")+" הגרלות. התוצאות כאן הן של ההגרלה לפני שלב המסחר.";
+  $("check").textContent="בדיקת המודל ל "+YEAR+": מקבלי עדיפות ראשונה במודל לפני מסחר "+D.model[0]+"%, אחרי מסחר "+D.trade[0]+"%, והנתון הרשמי "+D.official[0]+"%.";
+  // advice
+  var ul=$("advice");ul.textContent="";
+  ul.appendChild(el("li","","שינוי הסדר בין בתי חולים לא מעלה את הסיכוי הכולל שלך. בהגרלה כזו כל החלפה רק מעבירה סיכוי מבית חולים אחד לאחר, ולכן כדאי לדרג לפי ההעדפה האמיתית."));
+  var top=last.order[0],pf=last.open[top]/last.draws*100,fr=D.firstRate[D.names.indexOf(top)];
+  ul.appendChild(el("li","","הבחירה הראשונה שלך, "+top+", הייתה פנויה בתורך ב "+fmt(pf)+" מההגרלות. העמודה \"אם ראשון\" מראה את המספר הזה לכל בית חולים."));
+  if(fr&&fr[0]!=null)ul.appendChild(el("li","","שלב המסחר: בקרב הסטודנטים המדומים שדירגו את "+top+" ראשון, "+fr[0]+"% קיבלו אותו לפני המסחר ו "+fr[1]+"% אחריו. המסחר מבטיח שהמצב שלך לא יהיה גרוע מהתוצאות שמוצגות כאן, לפי מדד האושר של המנגנון."));
+  if(redNow>=0.3){
+    var c=Object.keys(last.rescue).map(function(n){return [n,last.rescue[n]/last.draws*100];}).filter(function(x){return x[1]>=0.1;}).sort(function(a,b){return b[1]-a[1];}).slice(0,3);
+    if(c.length){c.forEach(function(x){ul.appendChild(el("li","","הסיכון למקום שלא רוצה הוא "+fmt(redNow)+". אם "+x[0]+" יהיה מקובל עליך, הוא יורד ל "+fmt(Math.max(0,redNow-x[1]))+"."));});}
+    else ul.appendChild(el("li","","הסיכון למקום שלא רוצה הוא "+fmt(redNow)+". אף בית חולים מסומן אחד לא מוריד אותו לבדו."));
+  } else ul.appendChild(el("li","","הסיכון למקום שלא רוצה נמוך מ 0.3%, ואין מה לשפר בסימון."));
+}
+function run(){
+  if(busy)return;busy=true;$("run").disabled=true;$("year").disabled=true;
+  var total=10000,done=0,rnd=makeRng(1000+(runNo++)),m=D.names.length,mine=order.map(function(n){return D.names.indexOf(n);});
+  var got=new Array(m).fill(0),open=new Array(m).fill(0),rescue=new Array(m).fill(0),isRed=D.names.map(function(n){return !!red[n];}),cohort=null;
+  function step(){
+    var end=Math.min(done+250,total);
+    for(;done<end;done++){
+      if(done%25===0)cohort=makeCohort(D,rnd);
+      var free=freeAtMyTurn(D,cohort,rnd),h,i,okFree=false;
+      for(h=0;h<m;h++)if(free[h]>0){open[h]++;if(!isRed[h])okFree=true;}
+      for(i=0;i<m;i++)if(free[mine[i]]>0){got[mine[i]]++;break;}
+      if(!okFree)for(h=0;h<m;h++)if(isRed[h]&&free[h]>0)rescue[h]++;
+    }
+    $("status").textContent="רץ: "+done.toLocaleString("he")+" מתוך "+total.toLocaleString("he");
+    if(done<total){setTimeout(step,0);return;}
+    var pack=function(a){var o={};D.names.forEach(function(n,i){o[n]=a[i];});return o;},r2={};
+    D.names.forEach(function(n,i){if(isRed[i])r2[n]=rescue[i];});
+    prev=last;last={order:order.slice(),got:pack(got),open:pack(open),rescue:r2,red:JSON.parse(JSON.stringify(red)),draws:total};
+    renderResults();busy=false;$("run").disabled=false;$("year").disabled=false;
+    $("status").textContent=prev?"הסתיים. העמודה \"קודם\" מציגה את ההרצה הקודמת.":"הסתיים. אפשר לשנות את הדירוג ולהריץ שוב כדי להשוות.";
+  }
+  step();
+}
+(function(){var sel=$("year");Object.keys(DATA).sort().reverse().forEach(function(y){var o=el("option","",y);o.value=y;sel.appendChild(o);});sel.value=YEAR;
+  sel.onchange=function(){YEAR=sel.value;D=DATA[YEAR];
+    order=order.filter(function(n){return D.names.indexOf(n)>=0;});D.names.forEach(function(n){if(order.indexOf(n)<0)order.push(n);});
+    prev=null;last=null;renderRank();run();};})();
+$("run").onclick=run;renderRank();run();
+</script>
+</body>
+</html>
